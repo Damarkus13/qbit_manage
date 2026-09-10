@@ -203,6 +203,20 @@ class ShareLimits:
         """Updates share limits for torrents in a group"""
         group_upload_speed = group_config["limit_upload_speed"]
 
+        if group_config.get("prioritize_by_seed_leech_ratio", False):
+            def _calc_demand_score(tor):
+                leechers = max(getattr(tor, "num_incomplete", 0), getattr(tor, "num_leechs", 0), 0)
+                seeders = max(getattr(tor, "num_complete", 0), getattr(tor, "num_seeds", 0), 1)
+                if leechers == 0:
+                    return 0.0
+                return leechers / seeders
+
+            torrents = sorted(
+                torrents,
+                key=lambda t: (_calc_demand_score(t), -getattr(t, "ratio", 0.0), getattr(t, "added_on", 0)),
+                reverse=True,
+            )
+
         for torrent in torrents:
             t_name = torrent.name
             t_hash = torrent.hash
@@ -284,6 +298,7 @@ class ShareLimits:
                 resume_torrent=group_config["resume_torrent_after_change"],
                 tracker=tracker["url"],
                 reset_upload_speed_on_unmet_minimums=group_config["reset_upload_speed_on_unmet_minimums"],
+                deprioritize_on_unmet_minimums=group_config.get("deprioritize_on_unmet_minimums", False),
             )
             logger.trace(f"tor_reached_seed_limit: {tor_reached_seed_limit}")
             # Update share limits tag if needed
@@ -378,13 +393,28 @@ class ShareLimits:
         if exclusion_tag_added:
             return False
 
+        tor_limit_action_needed = tor_reached_seed_limit and (
+            group_config["cleanup"]
+            or group_config["upload_speed_on_limit_reached"] != 0
+            or group_config.get("deprioritize_on_limit_reached", False)
+        )
+        reserve_spots_needed = (
+            group_config.get("reserve_upload_spots", False)
+            and not getattr(torrent, "force_start", False)
+            and not tor_reached_seed_limit
+        ) or (
+            getattr(torrent, "force_start", False)
+            and tor_reached_seed_limit
+        )
+
         needs_update = (
             check_max_ratio
             or check_max_seeding_time
             or check_limit_upload_speed
             or share_limits_not_yet_tagged
             or check_multiple_share_limits_tag
-            or (tor_reached_seed_limit and (group_config["cleanup"] or group_config["upload_speed_on_limit_reached"] != 0))
+            or tor_limit_action_needed
+            or reserve_spots_needed
         )
 
         if not needs_update:
@@ -401,7 +431,8 @@ class ShareLimits:
             has_exclusion_tags
             or share_limits_not_yet_tagged
             or check_multiple_share_limits_tag
-            or (tor_reached_seed_limit and (group_config["cleanup"] or group_config["upload_speed_on_limit_reached"] != 0))
+            or tor_limit_action_needed
+            or reserve_spots_needed
         )
 
     def update_share_limits_tag_for_torrent(self, torrent):
@@ -427,6 +458,25 @@ class ShareLimits:
 
     def process_share_limits_for_torrent(self, torrent, group_config, tor_reached_seed_limit, torrent_upload_limit):
         """Updates share limits for a torrent"""
+        # Manage reserved upload spots (force_start bypasses active upload queue limits)
+        if group_config.get("reserve_upload_spots", False):
+            if not tor_reached_seed_limit:
+                if not getattr(torrent, "force_start", False):
+                    logger.print_line(
+                        logger.insert_space("Reserved Upload Spot: Setting Force Start (Active)", 8),
+                        self.config.loglevel,
+                    )
+                    if not self.config.dry_run:
+                        torrent.set_force_start(True)
+            else:
+                if getattr(torrent, "force_start", False):
+                    logger.print_line(
+                        logger.insert_space("Share Limit Reached: Releasing Reserved Upload Spot", 8),
+                        self.config.loglevel,
+                    )
+                    if not self.config.dry_run:
+                        torrent.set_force_start(False)
+
         # Take action when torrent meets share limits
         if tor_reached_seed_limit:
             if group_config["cleanup"]:
@@ -440,12 +490,15 @@ class ShareLimits:
                 )
                 self.tdel_dict[t_hash]["body"] = tor_reached_seed_limit
             else:
-                # New behavior: throttle upload speed instead of pausing/removing
+                # Throttle upload speed and/or deprioritize in upload queue
                 throttle_kib = group_config.get("upload_speed_on_limit_reached", 0)
+                deprioritize = group_config.get("deprioritize_on_limit_reached", False)
 
-                # Skip if throttle not configured (0 means not set)
-                if throttle_kib == 0:
-                    logger.debug(f"Skipping throttle for {torrent.name}: upload_speed_on_limit_reached not configured")
+                # Skip if neither throttle nor deprioritize is configured
+                if throttle_kib == 0 and not deprioritize:
+                    logger.debug(
+                        f"Skipping throttle and deprioritize for {torrent.name}: not configured"
+                    )
                     self.set_limits(
                         torrent=torrent,
                         max_ratio=group_config["max_ratio"],
@@ -464,29 +517,36 @@ class ShareLimits:
                     return
 
                 # Apply per-torrent upload throttle (KiB/s) or unlimited if -1
-                limit_val = -1 if throttle_kib == -1 else throttle_kib * 1024
+                limit_val = -1 if throttle_kib == -1 else (throttle_kib * 1024 if throttle_kib > 0 else None)
 
-                # Check if throttle needs to be applied (compare in KiB/s)
-                if throttle_kib != torrent_upload_limit:
-                    logger.print_line(
-                        logger.insert_space("Cleanup: False [Meets Share Limits]", 8),
-                        self.config.loglevel,
-                    )
+                logger.print_line(
+                    logger.insert_space("Cleanup: False [Meets Share Limits]", 8),
+                    self.config.loglevel,
+                )
+                if throttle_kib != 0 and throttle_kib != torrent_upload_limit:
                     disp = "unlimited" if throttle_kib == -1 else f"{throttle_kib} kB/s"
                     logger.print_line(
                         logger.insert_space(f"Applied upload throttle after limits reached: {disp}", 8),
                         self.config.loglevel,
                     )
-                    # Clear share limits to prevent qBittorrent from pausing again, then apply throttle
-                    if not self.config.dry_run:
-                        # Allow continued seeding by removing share limits
-                        torrent.set_share_limits(
-                            ratio_limit=-1,
-                            seeding_time_limit=-1,
-                            inactive_seeding_time_limit=-1,
-                            share_limit_action="Default",
-                        )
+                if deprioritize:
+                    logger.print_line(
+                        logger.insert_space("Share Limit Reached: Deprioritizing to bottom of upload queue", 8),
+                        self.config.loglevel,
+                    )
+
+                # Clear share limits to prevent qBittorrent from pausing again, then apply throttle/deprioritize
+                if not self.config.dry_run:
+                    torrent.set_share_limits(
+                        ratio_limit=-1,
+                        seeding_time_limit=-1,
+                        inactive_seeding_time_limit=-1,
+                        share_limit_action="Default",
+                    )
+                    if limit_val is not None:
                         torrent.set_upload_limit(limit_val)
+                    if deprioritize:
+                        torrent.bottom_priority()
         else:
             self.set_limits(
                 torrent=torrent,
@@ -691,6 +751,7 @@ class ShareLimits:
         resume_torrent,
         tracker,
         reset_upload_speed_on_unmet_minimums,
+        deprioritize_on_unmet_minimums=False,
     ):
         """Check if torrent has reached seed limit.
 
@@ -716,6 +777,11 @@ class ShareLimits:
                 logger.print_line(logger.insert_space(f"Tracker: {tracker}", 8), self.config.loglevel)
                 logger.print_line(logger.insert_space(reason_msg, 8), self.config.loglevel)
                 logger.print_line(logger.insert_space(f"Adding Tag: {tag}", 8), self.config.loglevel)
+                if deprioritize_on_unmet_minimums:
+                    logger.print_line(
+                        logger.insert_space("Archivist Guard: Pushing to bottom of upload queue", 8),
+                        self.config.loglevel,
+                    )
                 if not self.config.dry_run:
                     torrent.add_tags(tag)
                     torrent_tags += f", {tag}"
@@ -727,6 +793,10 @@ class ShareLimits:
                     )
                     if reset_upload_speed_on_unmet_minimums:
                         torrent.set_upload_limit(-1)
+                    if deprioritize_on_unmet_minimums:
+                        if getattr(torrent, "force_start", False):
+                            torrent.set_force_start(False)
+                        torrent.bottom_priority()
                     if resume_torrent:
                         torrent.resume()
 

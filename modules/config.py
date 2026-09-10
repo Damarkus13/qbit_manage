@@ -1022,6 +1022,46 @@ class Config:
                     do_print=False,
                     save=False,
                 )
+                self.share_limits[group]["prioritize_by_seed_leech_ratio"] = self.util.check_for_attribute(
+                    self.data,
+                    "prioritize_by_seed_leech_ratio",
+                    parent="share_limits",
+                    subparent=group,
+                    var_type="bool",
+                    default=False,
+                    do_print=False,
+                    save=False,
+                )
+                self.share_limits[group]["reserve_upload_spots"] = self.util.check_for_attribute(
+                    self.data,
+                    "reserve_upload_spots",
+                    parent="share_limits",
+                    subparent=group,
+                    var_type="bool",
+                    default=False,
+                    do_print=False,
+                    save=False,
+                )
+                self.share_limits[group]["deprioritize_on_limit_reached"] = self.util.check_for_attribute(
+                    self.data,
+                    "deprioritize_on_limit_reached",
+                    parent="share_limits",
+                    subparent=group,
+                    var_type="bool",
+                    default=False,
+                    do_print=False,
+                    save=False,
+                )
+                self.share_limits[group]["deprioritize_on_unmet_minimums"] = self.util.check_for_attribute(
+                    self.data,
+                    "deprioritize_on_unmet_minimums",
+                    parent="share_limits",
+                    subparent=group,
+                    var_type="bool",
+                    default=False,
+                    do_print=False,
+                    save=False,
+                )
                 self.share_limits[group]["torrents"] = []
                 # NOTE: the cleanup + share_limit_action mutual-exclusion check is folded into
                 # validate_share_limit_action above; no separate call needed.

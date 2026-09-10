@@ -224,6 +224,16 @@ class FakeTorrent:
         # to 0 in share_limits' read path.
         self.up_limit = 0 if limit == -1 else limit
 
+    def set_force_start(self, enable=True):
+        self._record("set_force_start", enable=enable)
+        self.force_start = enable
+
+    def bottom_priority(self):
+        self._record("bottom_priority")
+
+    def top_priority(self):
+        self._record("top_priority")
+
     def resume(self):
         self._record("resume")
 
@@ -649,6 +659,10 @@ def make_group_config(**overrides):
         "add_group_to_tag": True,
         "custom_tag": None,
         "reset_upload_speed_on_unmet_minimums": True,
+        "prioritize_by_seed_leech_ratio": False,
+        "reserve_upload_spots": False,
+        "deprioritize_on_limit_reached": False,
+        "deprioritize_on_unmet_minimums": False,
         "share_limit_action": "Default",
         "torrents": [],
     }
