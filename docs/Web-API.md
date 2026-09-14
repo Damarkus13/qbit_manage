@@ -317,7 +317,7 @@ Lines are returned in **chronological order** (oldest first). Use `limit` to cap
 
 ```bash
 curl -s "http://localhost:8181/api/logs?limit=50&log_filename=qbit_manage.log" \
-  -H "X-API-Key: your_api_key_here"
+  -H "X-API-Key: <API_KEY>"
 ```
 
 #### GET /api/log_files
@@ -609,7 +609,7 @@ If authentication is enabled, include your API key:
 ```bash
 curl -X POST http://localhost:8181/api/run-command \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key_here" \
+  -H "X-API-Key: <API_KEY>" \
   -d '{
     "config_file": "config.yml",
     "commands": ["cat_update", "tag_update"],

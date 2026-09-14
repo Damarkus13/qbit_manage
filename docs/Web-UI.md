@@ -35,7 +35,7 @@ When authentication is enabled, you can generate an API key for programmatic acc
 
 Example API call with key:
 ```bash
-curl -H "X-API-Key: your_api_key_here" http://localhost:8181/api/run-command
+curl -H "X-API-Key: <API_KEY>" http://localhost:8181/api/run-command
 ```
 
 ### Security Best Practices
