@@ -85,6 +85,24 @@ def validate_share_limit_action(raw, cleanup, group):
     return resolved
 
 
+# Valid values for share_limits_mode — see qBittorrent ShareLimitsMode enum (Web API 2.16.2+).
+SHARE_LIMITS_MODES = {
+    "Default": "Use qBittorrent's app-level default share limits mode",
+    "MatchAny": "Act when any share limit (ratio, seeding time, or inactive time) is reached",
+    "MatchAll": "Act only when all configured share limits are reached",
+}
+
+
+def validate_share_limits_mode(raw, group):
+    """Validate a share_limits_mode value and resolve None/empty to 'Default'."""
+    if raw is not None and raw != "" and (not isinstance(raw, str) or raw not in SHARE_LIMITS_MODES):
+        raise Failed(
+            f"Config Error: invalid share_limits_mode '{raw}' for the grouping "
+            f"'{group}'. Valid values are: {', '.join(SHARE_LIMITS_MODES.keys())}."
+        )
+    return raw or "Default"
+
+
 def normalize_cat_change(raw):
     """Validate and normalize cat_change config into the canonical mapping
     ``{old_cat: {"new_cat": str, "delay_minutes": int}}``.
@@ -930,6 +948,24 @@ class Config:
                     self.share_limits[group]["share_limit_action"] = validate_share_limit_action(
                         raw_share_limit_action,
                         self.share_limits[group]["cleanup"],
+                        group,
+                    )
+                except Failed as e:
+                    self.notify(str(e), "Config")
+                    raise
+                raw_share_limits_mode = self.util.check_for_attribute(
+                    self.data,
+                    "share_limits_mode",
+                    parent="share_limits",
+                    subparent=group,
+                    var_type="str",
+                    default="Default",
+                    do_print=False,
+                    save=False,
+                )
+                try:
+                    self.share_limits[group]["share_limits_mode"] = validate_share_limits_mode(
+                        raw_share_limits_mode,
                         group,
                     )
                 except Failed as e:

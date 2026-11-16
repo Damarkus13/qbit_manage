@@ -542,6 +542,7 @@ class ShareLimits:
                         seeding_time_limit=-1,
                         inactive_seeding_time_limit=-1,
                         share_limit_action="Default",
+                        share_limits_mode="Default",
                     )
                     if limit_val is not None:
                         torrent.set_upload_limit(limit_val)
@@ -554,6 +555,7 @@ class ShareLimits:
                 max_seeding_time=group_config["max_seeding_time"],
                 limit_upload_speed=group_config["limit_upload_speed"],
                 share_limit_action=group_config.get("share_limit_action", "Default"),
+                share_limits_mode=group_config.get("share_limits_mode", "Default"),
             )
 
         # Resume torrent if it was paused now that the share limit has changed
@@ -683,6 +685,7 @@ class ShareLimits:
         max_seeding_time,
         limit_upload_speed=None,
         share_limit_action="Default",
+        share_limits_mode="Default",
         do_print=True,
     ):
         """Set tags and limits for a torrent"""
@@ -735,6 +738,7 @@ class ShareLimits:
                 seeding_time_limit=max_seeding_time,
                 inactive_seeding_time_limit=-2,
                 share_limit_action=share_limit_action,
+                share_limits_mode=share_limits_mode,
             )
         [logger.print_line(msg, self.config.loglevel) for msg in body if do_print]
         return body
@@ -790,6 +794,7 @@ class ShareLimits:
                         seeding_time_limit=-1,
                         inactive_seeding_time_limit=-1,
                         share_limit_action="Default",
+                        share_limits_mode="Default",
                     )
                     if reset_upload_speed_on_unmet_minimums:
                         torrent.set_upload_limit(-1)

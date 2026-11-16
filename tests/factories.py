@@ -198,13 +198,21 @@ class FakeTorrent:
         remove = tags if isinstance(tags, list) else [t.strip() for t in str(tags).split(",") if t.strip()]
         self.tags = ", ".join(t for t in existing if t not in remove)
 
-    def set_share_limits(self, ratio_limit, seeding_time_limit, inactive_seeding_time_limit=-2, share_limit_action=None):
+    def set_share_limits(
+        self,
+        ratio_limit,
+        seeding_time_limit,
+        inactive_seeding_time_limit=-2,
+        share_limit_action=None,
+        share_limits_mode=None,
+    ):
         self._record(
             "set_share_limits",
             ratio_limit=ratio_limit,
             seeding_time_limit=seeding_time_limit,
             inactive_seeding_time_limit=inactive_seeding_time_limit,
             share_limit_action=share_limit_action,
+            share_limits_mode=share_limits_mode,
         )
         # Production code + tests reason about per-torrent ratio_limit /
         # seeding_time_limit (the qbittorrent-api field names), not the
@@ -664,6 +672,7 @@ def make_group_config(**overrides):
         "deprioritize_on_limit_reached": False,
         "deprioritize_on_unmet_minimums": False,
         "share_limit_action": "Default",
+        "share_limits_mode": "Default",
         "torrents": [],
     }
     base.update(overrides)

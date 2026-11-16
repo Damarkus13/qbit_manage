@@ -316,6 +316,9 @@ share_limits:
     #
     #   If unsure, leave this as "Default".
     share_limit_action: Default
+    # <OPTIONAL> share_limits_mode <str>: How qBittorrent evaluates multiple share limits (required by qBittorrent 5.3.0+).
+    #   Valid values: Default, MatchAny, MatchAll. Defaults to "Default".
+    share_limits_mode: Default
   cross-seed:
     priority: 2
     include_all_tags:
