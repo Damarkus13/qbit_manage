@@ -155,8 +155,8 @@ export const settingsSchema = {
             name: 'download_queue_promote_min_seeds',
             type: 'number',
             label: 'Download Queue Promote Min Seeds',
-            description: 'Promote queued downloads with strictly more than this many seeders to the top of the queue.',
-            default: 10,
+            description: 'Minimum seeders to rank above unranked items (0 ranks all >0-seeder queued downloads descending).',
+            default: 0,
             min: 0
         },
         {

@@ -12,7 +12,7 @@ from tests.factories import FakeTorrent
 
 def _make_cfg(tmp_path, **settings_overrides):
     settings = {
-        "download_queue_promote_min_seeds": 10,
+        "download_queue_promote_min_seeds": 0,
         "download_queue_demote_speed_kib": 50,
         "download_queue_grace_minutes": 10,
         "download_queue_scrape_trackers": True,
@@ -168,13 +168,25 @@ def test_promotes_high_seeder_queued_ahead_of_low_seed_without_disrupting_health
     qbt = FakeQbtManager(torrents=[healthy, dead, fast_mid, fast_top, low_seed], config=cfg)
 
     dq = DownloadQueue(qbt)
-    assert dq.stats_promoted == 2
+    assert dq.stats_promoted == 1
     assert dq.stats_demoted == 1
     assert len(_calls_of(fast_mid, "top_priority")) == 1
     assert len(_calls_of(fast_top, "top_priority")) == 1
     assert len(_calls_of(healthy, "top_priority")) == 1
     assert len(_calls_of(dead, "bottom_priority")) == 1
     assert not _calls_of(low_seed, "top_priority")
+
+
+def test_ranks_higher_seeders_ahead_of_lower_positive_seeders(tmp_path):
+    lower = FakeTorrent(name="Thirteen.Seeds", hash="1" * 40, state="queuedDL", priority=1, num_complete=13)
+    higher = FakeTorrent(name="Hundred.Seeds", hash="2" * 40, state="queuedDL", priority=2, num_complete=100)
+    cfg = _make_cfg(tmp_path, download_queue_scrape_trackers=False)
+    qbt = FakeQbtManager(torrents=[lower, higher], config=cfg)
+
+    dq = DownloadQueue(qbt)
+    assert dq.stats_promoted == 1
+    assert len(_calls_of(higher, "top_priority")) == 1
+    assert len(_calls_of(lower, "top_priority")) == 1
 
 
 def test_idempotent_when_queue_already_ordered(tmp_path):

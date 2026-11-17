@@ -467,7 +467,7 @@ class Config:
                 self.data, "rem_unregistered_max_torrents", parent="settings", var_type="int", default=10, min_int=0
             ),
             "download_queue_promote_min_seeds": self.util.check_for_attribute(
-                self.data, "download_queue_promote_min_seeds", parent="settings", var_type="int", default=10, min_int=0
+                self.data, "download_queue_promote_min_seeds", parent="settings", var_type="int", default=0, min_int=0
             ),
             "download_queue_demote_speed_kib": self.util.check_for_attribute(
                 self.data, "download_queue_demote_speed_kib", parent="settings", var_type="int", default=50, min_int=0

@@ -28,7 +28,7 @@ class DownloadQueue:
         self.stats_promoted = 0
         self.stats_demoted = 0
 
-        self.promote_min_seeds = self.config.settings.get("download_queue_promote_min_seeds", 10)
+        self.promote_min_seeds = self.config.settings.get("download_queue_promote_min_seeds", 0)
         self.demote_speed_kib = self.config.settings.get("download_queue_demote_speed_kib", 50)
         self.grace_minutes = self.config.settings.get("download_queue_grace_minutes", 10)
         self.scrape_trackers = self.config.settings.get("download_queue_scrape_trackers", True)
@@ -224,31 +224,62 @@ class DownloadQueue:
             else:
                 healthy_active.append(torrent)
 
-        # Resolve seeder counts for queued downloads and promote > threshold without disrupting healthy active downloads
+        # Resolve seeder counts for queued downloads and rank queue without disrupting healthy active downloads
         seed_map = self._resolve_queued_seeders(queued_torrents, state_torrents, now)
 
-        non_qualifying = [
-            t for t in queued_torrents if seed_map.get(t.hash, -1) <= self.promote_min_seeds and getattr(t, "priority", 0) > 0
-        ]
-        min_non_qualifying_prio = min((t.priority for t in non_qualifying), default=None)
+        def _queue_rank_key(torrent):
+            seeds = seed_map.get(torrent.hash, -1)
+            added_on = getattr(torrent, "added_on", 0) or 0
+            if seeds > self.promote_min_seeds and seeds > 0:
+                tier = 2
+                score = seeds
+            elif seeds == 0:
+                tier = 0
+                score = 0
+            else:
+                tier = 1
+                score = seeds if self.promote_min_seeds == 0 else 0
+            return (tier, score, -added_on)
 
-        to_promote = []
-        if min_non_qualifying_prio is not None:
-            for torrent in queued_torrents:
-                seeds = seed_map.get(torrent.hash, -1)
-                prio = getattr(torrent, "priority", 0)
-                if seeds > self.promote_min_seeds and (prio == 0 or prio > min_non_qualifying_prio):
-                    to_promote.append((seeds, torrent))
+        actual_queued = sorted(queued_torrents, key=lambda t: getattr(t, "priority", 0))
+        desired_queued = sorted(queued_torrents, key=_queue_rank_key, reverse=True)
 
-        if to_promote:
-            # Apply top_priority ascending by seeders so highest-seeder torrent lands ahead of lower ones
-            to_promote.sort(key=lambda item: (item[0], getattr(item[1], "added_on", 0)))
-            for seeds, torrent in to_promote:
-                self.stats_promoted += 1
+        # First sink confirmed 0-seeder torrents that sit ahead of non-zero queued downloads
+        non_zero_indices = [i for i, t in enumerate(actual_queued) if seed_map.get(t.hash, -1) != 0]
+        last_non_zero_idx = max(non_zero_indices, default=-1)
+        sunk_zero = []
+        kept_actual = []
+        for idx, torrent in enumerate(actual_queued):
+            if seed_map.get(torrent.hash, -1) == 0 and idx < last_non_zero_idx:
+                self.stats_demoted += 1
                 util.logger.print_line(
-                    util.logger.insert_space(f"Promoting well-seeded download ({seeds} seeds): {torrent.name}", 3),
+                    util.logger.insert_space(f"Demoting 0-seeder queued download: {torrent.name}", 3),
                     self.config.loglevel,
                 )
+                if not self.config.dry_run:
+                    torrent.bottom_priority()
+                sunk_zero.append(torrent)
+            else:
+                kept_actual.append(torrent)
+
+        simulated_actual = kept_actual + sunk_zero
+        last_mismatch = None
+        for idx, (cur_t, want_t) in enumerate(zip(simulated_actual, desired_queued)):
+            if cur_t.hash != want_t.hash:
+                last_mismatch = idx
+
+        if last_mismatch is not None:
+            sim_index = {t.hash: i for i, t in enumerate(simulated_actual)}
+            # Apply top_priority in reverse order over the mismatched prefix so desired_queued[0] lands right behind active
+            for desired_idx in range(last_mismatch, -1, -1):
+                torrent = desired_queued[desired_idx]
+                seeds = seed_map.get(torrent.hash, -1)
+                if seeds > 0 and desired_idx < sim_index[torrent.hash]:
+                    self.stats_promoted += 1
+                    util.logger.print_line(
+                        util.logger.insert_space(f"Ranking download ({seeds} seeds): {torrent.name}", 3),
+                        self.config.loglevel,
+                    )
                 if not self.config.dry_run:
                     torrent.top_priority()
 
@@ -256,19 +287,5 @@ class DownloadQueue:
             if not self.config.dry_run:
                 for torrent in sorted(healthy_active, key=lambda t: getattr(t, "priority", 0), reverse=True):
                     torrent.top_priority()
-
-        # Sink confirmed 0-seeder queued torrents behind >0/unknown queued torrents
-        positive_or_unknown = [t for t in queued_torrents if seed_map.get(t.hash, -1) != 0 and getattr(t, "priority", 0) > 0]
-        max_non_zero_prio = max((t.priority for t in positive_or_unknown), default=None)
-        if max_non_zero_prio is not None:
-            for torrent in queued_torrents:
-                if seed_map.get(torrent.hash, -1) == 0 and getattr(torrent, "priority", 0) < max_non_zero_prio:
-                    self.stats_demoted += 1
-                    util.logger.print_line(
-                        util.logger.insert_space(f"Demoting 0-seeder queued download: {torrent.name}", 3),
-                        self.config.loglevel,
-                    )
-                    if not self.config.dry_run:
-                        torrent.bottom_priority()
 
         self._save_state(state)
