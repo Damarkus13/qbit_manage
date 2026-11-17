@@ -416,6 +416,8 @@ class WebAPI:
                 "untagged_noHL": 0,
                 "updated_share_limits": 0,
                 "cleaned_share_limits": 0,
+                "promoted_downloads": 0,
+                "demoted_downloads": 0,
             }
 
             if qbit_manager:
@@ -642,6 +644,7 @@ class WebAPI:
                 "rem_orphaned",
                 "tag_nohardlinks",
                 "share_limits",
+                "download_queue",
                 "skip_cleanup",
                 "skip_qb_version_check",
             ]

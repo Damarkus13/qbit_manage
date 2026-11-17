@@ -150,6 +150,45 @@ export const settingsSchema = {
             description: 'Maximum number of torrents to remove per tracker per run. Set to 0 to disable.',
             default: 10,
             min: 0
+        },
+        {
+            name: 'download_queue_promote_min_seeds',
+            type: 'number',
+            label: 'Download Queue Promote Min Seeds',
+            description: 'Promote queued downloads with strictly more than this many seeders to the top of the queue.',
+            default: 10,
+            min: 0
+        },
+        {
+            name: 'download_queue_demote_speed_kib',
+            type: 'number',
+            label: 'Download Queue Demote Speed (KiB/s)',
+            description: 'Demote active downloads slower than this speed after the grace period. Set to 0 to disable.',
+            default: 50,
+            min: 0
+        },
+        {
+            name: 'download_queue_grace_minutes',
+            type: 'number',
+            label: 'Download Queue Grace Period (minutes)',
+            description: 'Active download minutes before slow or stalled downloads are rotated to the bottom of the queue.',
+            default: 10,
+            min: 0
+        },
+        {
+            name: 'download_queue_scrape_trackers',
+            type: 'boolean',
+            label: 'Scrape Trackers for Queued Downloads',
+            description: 'Scrape HTTP/UDP trackers for queued downloads when qBittorrent reports 0 seeders.',
+            default: true
+        },
+        {
+            name: 'download_queue_scrape_ttl_minutes',
+            type: 'number',
+            label: 'Download Queue Scrape Cache TTL (minutes)',
+            description: 'How long cached tracker scrape results are reused before re-scraping.',
+            default: 30,
+            min: 1
         }
     ]
 };

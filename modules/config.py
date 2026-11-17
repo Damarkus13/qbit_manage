@@ -28,6 +28,7 @@ COMMANDS = [
     "rem_orphaned",
     "tag_nohardlinks",
     "share_limits",
+    "download_queue",
     "skip_cleanup",
     "skip_qb_version_check",
     "dry_run",
@@ -274,6 +275,7 @@ class Config:
         logger.debug(f"    --rem-orphaned (QBT_REM_ORPHANED): {self.commands['rem_orphaned']}")
         logger.debug(f"    --tag-nohardlinks (QBT_TAG_NOHARDLINKS): {self.commands['tag_nohardlinks']}")
         logger.debug(f"    --share-limits (QBT_SHARE_LIMITS): {self.commands['share_limits']}")
+        logger.debug(f"    --download-queue (QBT_DOWNLOAD_QUEUE): {self.commands['download_queue']}")
         logger.debug(f"    --skip-cleanup (QBT_SKIP_CLEANUP): {self.commands['skip_cleanup']}")
         logger.debug(f"    --skip-qb-version-check (QBT_SKIP_QB_VERSION_CHECK): {self.commands['skip_qb_version_check']}")
         logger.debug(f"    --dry-run (QBT_DRY_RUN): {self.commands['dry_run']}")
@@ -463,6 +465,21 @@ class Config:
             ),
             "rem_unregistered_max_torrents": self.util.check_for_attribute(
                 self.data, "rem_unregistered_max_torrents", parent="settings", var_type="int", default=10, min_int=0
+            ),
+            "download_queue_promote_min_seeds": self.util.check_for_attribute(
+                self.data, "download_queue_promote_min_seeds", parent="settings", var_type="int", default=10, min_int=0
+            ),
+            "download_queue_demote_speed_kib": self.util.check_for_attribute(
+                self.data, "download_queue_demote_speed_kib", parent="settings", var_type="int", default=50, min_int=0
+            ),
+            "download_queue_grace_minutes": self.util.check_for_attribute(
+                self.data, "download_queue_grace_minutes", parent="settings", var_type="int", default=10, min_int=0
+            ),
+            "download_queue_scrape_trackers": self.util.check_for_attribute(
+                self.data, "download_queue_scrape_trackers", parent="settings", var_type="bool", default=True
+            ),
+            "download_queue_scrape_ttl_minutes": self.util.check_for_attribute(
+                self.data, "download_queue_scrape_ttl_minutes", parent="settings", var_type="int", default=30, min_int=1
             ),
         }
 

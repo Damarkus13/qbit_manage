@@ -15,6 +15,7 @@ commands:
   rem_orphaned: False
   tag_nohardlinks: False
   share_limits: False
+  download_queue: False
   skip_qb_version_check: False
   skip_cleanup: False
 
@@ -51,6 +52,11 @@ settings:
     - ignore if found
   rem_unregistered_grace_minutes: 10 # Grace period (minutes) to skip removing newly added torrents when unregistered with the tracker (Default is 10)
   rem_unregistered_max_torrents: 10 # Maximum number of torrents to remove per tracker per run. (Default is 10)
+  download_queue_promote_min_seeds: 10 # Promote queued downloads with more than this many seeders to the top of the queue (Default is 10)
+  download_queue_demote_speed_kib: 50 # Demote active downloads slower than this speed (KiB/s) after the grace period (0 disables speed demotion)
+  download_queue_grace_minutes: 10 # Active download minutes before slow/stalled downloads are rotated to the bottom of the queue
+  download_queue_scrape_trackers: True # Scrape HTTP/UDP trackers for queued downloads when qBittorrent reports 0 seeders
+  download_queue_scrape_ttl_minutes: 30 # Cache TTL (minutes) for scraped queued-download seeder counts
 
 directory:
   # Do not remove these

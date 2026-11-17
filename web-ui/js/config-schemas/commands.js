@@ -65,6 +65,13 @@ export const commandsSchema = {
             default: false
         },
         {
+            name: 'download_queue',
+            type: 'boolean',
+            label: 'Manage Download Queue',
+            description: 'Promote well-seeded queued downloads and rotate slow or stalled active downloads to the bottom of the queue.',
+            default: false
+        },
+        {
             type: 'section_header',
             label: 'Execution Options'
         },

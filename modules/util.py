@@ -158,6 +158,10 @@ def format_stats_summary(stats: dict, config) -> list[str]:
                 display_key = "Share Limits Updated"
             elif stat_key == "cleaned_share_limits":
                 display_key = "Torrents Removed from Meeting Share Limits"
+            elif stat_key == "promoted_downloads":
+                display_key = "Queued Downloads Promoted"
+            elif stat_key == "demoted_downloads":
+                display_key = "Slow/Stalled Downloads Demoted"
             elif stat_key == "recycle_emptied":
                 display_key = "Files Deleted from Recycle Bin"
             elif stat_key == "orphaned_emptied":
@@ -1801,6 +1805,7 @@ def execute_qbit_commands(qbit_manager, commands, stats, hashes=None):
     """
     # Import here to avoid circular imports
     from modules.core.category import Category
+    from modules.core.download_queue import DownloadQueue
     from modules.core.recheck import ReCheck
     from modules.core.remove_orphaned import RemoveOrphaned
     from modules.core.remove_unregistered import RemoveUnregistered
@@ -1945,3 +1950,23 @@ def execute_qbit_commands(qbit_manager, commands, stats, hashes=None):
             stats["executed_commands"].append("share_limits")
         else:
             logger.warning("Share Limits operation skipped due to API errors")
+
+    # Manage Download Queue
+    if commands.get("download_queue"):
+        if hashes is not None:
+            download_queue = safe_execute_with_qbit_error_handling(
+                lambda: DownloadQueue(qbit_manager, hashes), "Download Queue (with hashes)"
+            )
+        else:
+            download_queue = safe_execute_with_qbit_error_handling(lambda: DownloadQueue(qbit_manager), "Download Queue")
+
+        if download_queue is not None:
+            if "promoted_downloads" not in stats:
+                stats["promoted_downloads"] = 0
+            if "demoted_downloads" not in stats:
+                stats["demoted_downloads"] = 0
+            stats["promoted_downloads"] += download_queue.stats_promoted
+            stats["demoted_downloads"] += download_queue.stats_demoted
+            stats["executed_commands"].append("download_queue")
+        else:
+            logger.warning("Download Queue operation skipped due to API errors")

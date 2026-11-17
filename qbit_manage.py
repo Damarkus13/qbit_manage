@@ -218,6 +218,17 @@ parser.add_argument(
     ),
 )
 parser.add_argument(
+    "-dq",
+    "--download-queue",
+    dest="download_queue",
+    action="store_true",
+    default=False,
+    help=(
+        "Manage incomplete download queue priority by promoting well-seeded queued torrents "
+        "and rotating stalled or slow active downloads."
+    ),
+)
+parser.add_argument(
     "-sc",
     "--skip-cleanup",
     dest="skip_cleanup",
@@ -292,6 +303,7 @@ tag_tracker_error = get_arg("QBT_TAG_TRACKER_ERROR", args.tag_tracker_error, arg
 rem_orphaned = get_arg("QBT_REM_ORPHANED", args.rem_orphaned, arg_bool=True)
 tag_nohardlinks = get_arg("QBT_TAG_NOHARDLINKS", args.tag_nohardlinks, arg_bool=True)
 share_limits = get_arg("QBT_SHARE_LIMITS", args.share_limits, arg_bool=True)
+download_queue = get_arg("QBT_DOWNLOAD_QUEUE", args.download_queue, arg_bool=True)
 skip_cleanup = get_arg("QBT_SKIP_CLEANUP", args.skip_cleanup, arg_bool=True)
 skip_qb_version_check = get_arg("QBT_SKIP_QB_VERSION_CHECK", args.skip_qb_version_check, arg_bool=True)
 dry_run = get_arg("QBT_DRY_RUN", args.dry_run, arg_bool=True)
@@ -336,6 +348,7 @@ for v in [
     "rem_orphaned",
     "tag_nohardlinks",
     "share_limits",
+    "download_queue",
     "skip_cleanup",
     "skip_qb_version_check",
     "dry_run",
@@ -493,6 +506,8 @@ def start():
             "untagged_noHL": 0,
             "updated_share_limits": 0,
             "cleaned_share_limits": 0,
+            "promoted_downloads": 0,
+            "demoted_downloads": 0,
         }
 
         def finished_run(next_scheduled_run_info_shared):

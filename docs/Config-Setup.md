@@ -50,6 +50,7 @@ This section will override any [commands](Commands) that are defined via environ
 | `rem_orphaned` | Run the rem-orphaned command. | <center>❌</center> |
 | `tag_nohardlinks` | Run the tag-nohardlinks command. | <center>❌</center> |
 | `share_limits` | Run the share-limits command. | <center>❌</center> |
+| `download_queue` | Run the download-queue command to promote well-seeded queued downloads and rotate slow/stalled active downloads. | <center>❌</center> |
 | `skip_qb_version_check` | Skip qBittorrent version compatibility checks. | <center>❌</center> |
 | `skip_cleanup` | Skip recyclebin/orphaned cleanup pass. | <center>❌</center> |
 
@@ -90,6 +91,7 @@ Every CLI flag (and a few internal settings) can be set via environment variable
 | `QBT_REM_ORPHANED` | `-ro`/`--rem-orphaned` | CLI default | Run the rem-orphaned command |
 | `QBT_TAG_NOHARDLINKS` | `-tnhl`/`--tag-nohardlinks` | CLI default | Run the tag-nohardlinks command |
 | `QBT_SHARE_LIMITS` | `-sl`/`--share-limits` | CLI default | Run the share-limits command |
+| `QBT_DOWNLOAD_QUEUE` | `-dq`/`--download-queue` | CLI default | Run the download-queue command |
 | `QBT_SKIP_CLEANUP` | `-sc`/`--skip-cleanup` | CLI default | Skip emptying RecycleBin and orphaned dirs |
 | `QBT_SKIP_QB_VERSION_CHECK` | `-svc`/`--skip-qb-version-check` | CLI default | Bypass qBittorrent version compatibility check |
 | `QBT_DRY_RUN` | `-dr`/`--dry-run` | CLI default | Preview actions without executing them |
@@ -133,6 +135,11 @@ This section defines any settings defined in the configuration.
 | `rem_unregistered_ignore_list`      | Ignores a list of words found in the status of the tracker when running rem_unregistered command and will not remove the torrent if matched                                                                                                                                                                                                     |                           | <center>❌</center> |
 | `rem_unregistered_grace_minutes`    | Minimum age in minutes to protect newly added torrents from removal when a tracker reports unregistered. Set to 0 to disable.                                                                                                                                                                                                                   | 10                        | <center>❌</center> |
 | `rem_unregistered_max_torrents`     | Maximum number of torrents to remove per tracker per run. Set to 0 to disable.                                                                                                                                                                                                                                                                  | 10                        | <center>❌</center> |
+| `download_queue_promote_min_seeds`  | Promote `queuedDL` torrents with strictly more than this many seeders to the top of the download queue when `download_queue` is enabled.                                                                                                                                                                                                        | 10                        | <center>❌</center> |
+| `download_queue_demote_speed_kib`   | Demote active downloads slower than this speed (KiB/s) after `download_queue_grace_minutes` when `queuedDL` torrents are waiting. Set to 0 to disable speed-based demotion.                                                                                                                                                                     | 50                        | <center>❌</center> |
+| `download_queue_grace_minutes`      | Minutes an active download must run before being rotated to the bottom for being slow or stalled.                                                                                                                                                                                                                                               | 10                        | <center>❌</center> |
+| `download_queue_scrape_trackers`    | Scrape HTTP/UDP trackers for `queuedDL` torrents when qBittorrent reports 0 seeders.                                                                                                                                                                                                                                                            | True                      | <center>❌</center> |
+| `download_queue_scrape_ttl_minutes` | Cache TTL in minutes for scraped queued-download seeder counts.                                                                                                                                                                                                                                                                                 | 30                        | <center>❌</center> |
 
 `stalled_tag` only fires when `tag_stalled_torrents: true` is also set. The boolean toggle activates the feature; this string is the tag name applied.
 
